@@ -1,22 +1,138 @@
+
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<h1> THIS IS THE HOME SCREEN</h1>
-<h2> {{username}}</h2>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <canvas id="canvas" width="350" height="350"></canvas>
+        <h1>WebSocket Chat</h1>
+        <h2>Your ID: <span id="ws-id"></span></h2>
 
-<canvas id="myCanvas" width="1500" height="900"
-style="border:1px solid #c3c3c3;">
-</canvas>
+        <ul id='messages'>
+        </ul>
+        <script>
+            var client_id = Date.now()
+            document.querySelector("#ws-id").textContent = client_id;
+            var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
+            ws.onmessage = function(event) {
 
-<script>
-var canvas = document.getElementById("myCanvas");
-var ctx = canvas.getContext("2d");
-ctx.fillStyle = "#FF0000";
-ctx.fillRect(0,0,150,75);
-</script>
-</body>
+                console.log(event.data);
+                const drawing = JSON.parse(event.data);
+                draw(drawing);
+            };
+            function sendMessage(msg) {
+                ws.send(msg)
+
+            }
+            document.addEventListener("keydown", keyDownHandler, false);
+            document.addEventListener("keyup", keyUpHandler, false);
+            let rightPressed = false;
+            let leftPressed = false;
+            let upPressed = false;
+            let downPressed = false;
+            const keys = {UP:upPressed, DOWN:downPressed, RIGHT:rightPressed, LEFT:leftPressed}
+            function keyDownHandler(e) {
+                if(e.key == "Right" || e.key == "ArrowRight") {
+                    rightPressed = true;
+                } else if(e.key == "Left" || e.key == "ArrowLeft") {
+                    leftPressed = true;
+                } else if(e.key == "Up" || e.key == "ArrowUp") {
+                    upPressed = true;
+                } else if(e.key == "Down" || e.key == "ArrowDown") {
+                    downPressed = true;
+                }
+                if (downPressed || upPressed || rightPressed || leftPressed){sendMessage(JSON.stringify(keys));}
+
+            }
+
+            function keyUpHandler(e) {
+                if(e.key == "Right" || e.key == "ArrowRight") {
+                    rightPressed = false;
+                } else if(e.key == "Left" || e.key == "ArrowLeft") {
+                    leftPressed = false;
+                } else if(e.key == "Up" || e.key == "ArrowUp") {
+                    upPressed = false;
+                } else if(e.key == "Down" || e.key == "ArrowDown") {
+                    downPressed = false;
+                }
+                if (downPressed || upPressed || rightPressed || leftPressed){sendMessage(JSON.stringify(keys));}
+            }
+
+            function draw_rect(parameters) {
+                console.log(9)
+                let rect = parameters[0];
+                let color = parameters[1];
+
+                let width = parameters[2];
+
+                const canvas = document.getElementById("canvas");
+                if (canvas.getContext) {
+                    const ctx = canvas.getContext("2d");
+
+                    if (!(width == 0)){
+                        ctx.lineWidth = width;
+                        ctx.strokeStyle = "rgba(" + color.join(', ') + ')';
+                        console.log("urmom")
+                        ctx.strokeRect(rect[0], rect[1], rect[2], rect[3],);
+                    } else {
+
+                        ctx.fillStyle = "rgba(" + color.join(', ') + ')';
+                        ctx.fillRect(rect[0], rect[1], rect[2], rect[3],);
+                    }
+                }
+            }
+
+
+
+            function draw_poly(parameters) {
+                console.log('y');
+                let points = parameters[0];
+                let color = parameters[1];
+                let width = parameters[2];
+                const canvas = document.getElementById("canvas");
+                if (canvas.getContext) {
+                    const ctx = canvas.getContext("2d");
+                    ctx.fillStyle = "rgba(" + color.join(', ') + ')';
+                    ctx.beginPath();
+
+                    for( let i of points){
+                        if (points.indexOf(i) == 0){
+
+                            ctx.moveTo(i[0],i[1]);
+
+                        } else{
+                            ctx.lineTo(i[0],i[1]);
+                        }
+                    }
+
+                    ctx.closePath();
+                    if (width == 0){
+
+                        ctx.fill();
+                    } else {
+                        ctx.lineWidth = width;
+                        ctx.strokeStyle = "rgba(" + color.join(', ') + ')';
+                        ctx.stroke();
+                    }
+
+                }
+
+            }
+
+            function draw(drawobs) {
+                if (canvas.getContext) {
+                    const ctx = canvas.getContext("2d");
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    for( let i of drawobs){
+                        if (i.type == "poly"){
+                            draw_poly(i.parameters)
+                        } else if(i.type == "rect") {
+                            draw_rect(i.parameters);
+                        }
+                    }
+                }
+            }
+        </script>
+    </body>
 </html>
