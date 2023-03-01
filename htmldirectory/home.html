@@ -16,10 +16,16 @@
             document.querySelector("#ws-id").textContent = client_id;
             var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
             ws.onmessage = function(event) {
-
                 console.log(event.data);
-                const drawing = JSON.parse(event.data);
-                draw(drawing);
+                const input = JSON.parse(event.data);
+                if(input[0] === "get_input"){
+                    sendMessage(JSON.stringify(
+                        {keys:{UP:upPressed, DOWN:downPressed, RIGHT:rightPressed, LEFT:leftPressed},
+                         mouse_button_down:mouseClick, mouse_motion:mouseMotion, mouse_coords:[mouseX,mouseY]}));
+                    mouseMotion = False
+                } else if (input[0] === "draw"){
+                    draw(input[1]);
+                } else if (input[0] === "None"){sendMessage("None");}
             };
             function sendMessage(msg) {
                 ws.send(msg)
@@ -27,11 +33,15 @@
             }
             document.addEventListener("keydown", keyDownHandler, false);
             document.addEventListener("keyup", keyUpHandler, false);
+            document.addEventListener("mousemove", mouseMoveHandler, false);
             let rightPressed = false;
             let leftPressed = false;
             let upPressed = false;
             let downPressed = false;
-            const keys = {UP:upPressed, DOWN:downPressed, RIGHT:rightPressed, LEFT:leftPressed}
+            let mouseMotion = false;
+            let mouseClick = false;
+            let mouseX = 0;
+            let mouseY = 0;
             function keyDownHandler(e) {
                 if(e.key == "Right" || e.key == "ArrowRight") {
                     rightPressed = true;
@@ -42,7 +52,7 @@
                 } else if(e.key == "Down" || e.key == "ArrowDown") {
                     downPressed = true;
                 }
-                if (downPressed || upPressed || rightPressed || leftPressed){sendMessage(JSON.stringify(keys));}
+
 
             }
 
@@ -56,7 +66,12 @@
                 } else if(e.key == "Down" || e.key == "ArrowDown") {
                     downPressed = false;
                 }
-                if (downPressed || upPressed || rightPressed || leftPressed){sendMessage(JSON.stringify(keys));}
+            }
+
+            function mouseMoveHandler(e){
+                mouseMotion = true;
+                mouseX = e.clientX - canvas.offsetLeft;
+                mouseY = e.clientY - canvas.offsetTop;
             }
 
             function draw_rect(parameters) {
@@ -74,16 +89,25 @@
                         ctx.lineWidth = width;
                         ctx.strokeStyle = "rgba(" + color.join(', ') + ')';
                         console.log("urmom")
-                        ctx.strokeRect(rect[0], rect[1], rect[2], rect[3],);
+                        ctx.strokeRect(rect[0], rect[1], rect[2], rect[3]);
                     } else {
 
                         ctx.fillStyle = "rgba(" + color.join(', ') + ')';
-                        ctx.fillRect(rect[0], rect[1], rect[2], rect[3],);
+                        ctx.fillRect(rect[0], rect[1], rect[2], rect[3]);
                     }
                 }
             }
 
+            function fillScreen(parameters){
 
+                const color = parameters[0]
+                const canvas = document.getElementById("canvas");
+                if (canvas.getContext) {
+                    const ctx = canvas.getContext("2d");
+                    ctx.fillStyle = "rgba(" + color.join(', ') + ')';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            }
 
             function draw_poly(parameters) {
                 console.log('y');
@@ -129,6 +153,16 @@
                             draw_poly(i.parameters)
                         } else if(i.type == "rect") {
                             draw_rect(i.parameters);
+                        } else if(i.type == "fill_screen"){
+                            fillScreen(i.parameters)
+                        } else if(i.type == "text"){
+                            // drawText(i.parameters)
+                        } else if(i.type == "image"){
+                            // drawImage(i.parameters)
+                        } else if(i.type == "circle"){
+                            // drawCircle(i.parameters)
+                        } else if(i.type == "elipse"){
+                            // drawElipse(i.parameters)
                         }
                     }
                 }
